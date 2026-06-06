@@ -3,6 +3,7 @@ from pathlib import Path
 import joblib
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -32,7 +33,7 @@ def entrenar_modelo():
     modelo = Pipeline(
         steps=[
             ("escalado", StandardScaler()),
-            ("clasificador", LogisticRegression())
+            ("clasificador", RandomForestClassifier(n_estimators=100))
         ]
     )
     modelo.fit(X, y)
