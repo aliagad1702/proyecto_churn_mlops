@@ -255,7 +255,7 @@
         <div class="card-title">Endpoint API</div>
         <div class="endpoint-bar">
           <span class="method-badge">POST</span>
-          <input class="endpoint-input" id="endpoint" type="text" value="http://localhost:8000/predict" placeholder="http://localhost:8000/predict" />
+          <input class="endpoint-input" id="endpoint" type="text" value="/predict" placeholder="http://localhost:8000/predict" />
         </div>
 
         <div class="card-title">Datos del cliente</div>
@@ -438,7 +438,7 @@ async function checkHealth() {
   dot.className = 'status-dot checking';
   txt.textContent = 'verificando...';
   try {
-    const r = await fetch(base + '/health', { signal: AbortSignal.timeout(4000) });
+    const r = await fetch('/health', { signal: AbortSignal.timeout(4000) });
     if (r.ok) {
       dot.className = 'status-dot ok';
       txt.textContent = 'API activa';
