@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Churn Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --surface3: #1e1e28;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f0f5;
+    --muted: #7070a0;
+    --accent: #7c6af7;
+    --accent2: #a594f9;
+    --red: #f25f5c;
+    --green: #4ecdc4;
+    --yellow: #ffd166;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .layout { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* header */
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 48px; }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -0.5px; color: var(--text); display: flex; align-items: center; gap: 10px; }
+  .logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+  .api-status { display: flex; align-items: center; gap: 8px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); background: var(--surface); border: 1px solid var(--border); padding: 6px 14px; border-radius: 999px; cursor: pointer; transition: border-color 0.2s; }
+  .api-status:hover { border-color: var(--border2); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background 0.3s, box-shadow 0.3s; }
+  .status-dot.ok { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .status-dot.err { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .status-dot.checking { animation: pulse 1s infinite; background: var(--yellow); }
+  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.3 } }
+
+  /* hero */
+  .hero { margin-bottom: 40px; }
+  .hero h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(32px,5vw,52px); line-height: 1.1; letter-spacing: -1px; margin-bottom: 12px; }
+  .hero h1 span { color: var(--accent2); }
+  .hero p { color: var(--muted); font-size: 16px; max-width: 500px; line-height: 1.6; }
+
+  /* main grid */
+  .main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+  @media (max-width: 700px) { .main-grid { grid-template-columns: 1fr; } }
+
+  /* card */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; }
+  .card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
+  .card-title::before { content:''; display:block; width:3px; height:14px; background:var(--accent); border-radius:2px; }
+
+  /* endpoint bar */
+  .endpoint-bar { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 28px; display: flex; align-items: center; gap: 10px; font-family: 'DM Mono', monospace; font-size: 12px; }
+  .method-badge { background: rgba(124,106,247,0.15); color: var(--accent2); padding: 3px 8px; border-radius: 4px; font-weight: 500; flex-shrink: 0; }
+  .endpoint-input { background: transparent; border: none; outline: none; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; flex: 1; min-width: 0; }
+  .endpoint-input::placeholder { color: var(--muted); }
+
+  /* form */
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 500px) { .fields { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+  .field .hint { font-size: 11px; color: rgba(112,112,160,0.6); margin-top: 2px; }
+  .field input, .field select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    -webkit-appearance: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); background: var(--surface3); }
+  .field.full { grid-column: 1 / -1; }
+
+  /* slider */
+  .slider-wrap { display: flex; align-items: center; gap: 12px; }
+  .slider-wrap input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface3);
+    border: none;
+    outline: none;
+    cursor: pointer;
+  }
+  .slider-wrap input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(124,106,247,0.5);
+  }
+  .slider-val { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent2); min-width: 36px; text-align: right; }
+
+  /* toggle */
+  .toggle-wrap { display: flex; align-items: center; gap: 12px; }
+  .toggle { width: 44px; height: 24px; border-radius: 999px; background: var(--surface3); border: 1px solid var(--border); cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0; }
+  .toggle.on { background: var(--accent); border-color: var(--accent); }
+  .toggle::after { content:''; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform 0.2s; }
+  .toggle.on::after { transform: translateX(20px); }
+  .toggle-label { font-size: 13px; color: var(--muted); }
+
+  /* predict btn */
+  .predict-btn {
+    margin-top: 28px;
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .predict-btn:hover { opacity: 0.9; }
+  .predict-btn:active { transform: scale(0.98); }
+  .predict-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* spinner */
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg) } }
+
+  /* result panel */
+  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .result-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); }
+  .result-header .label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; }
+  .result-verdict { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 26px; display: flex; align-items: center; gap: 10px; }
+  .verdict-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .verdict-icon.churn { background: rgba(242,95,92,0.15); }
+  .verdict-icon.no-churn { background: rgba(78,205,196,0.15); }
+
+  .result-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* prob gauge */
+  .prob-section { }
+  .prob-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; }
+  .prob-label span:first-child { color: var(--muted); }
+  .prob-label span:last-child { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500; color: var(--text); }
+  .prob-track { height: 8px; background: var(--surface3); border-radius: 4px; overflow: hidden; }
+  .prob-fill { height: 100%; border-radius: 4px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); background: var(--green); }
+  .prob-fill.high { background: var(--red); }
+  .prob-fill.mid { background: var(--yellow); }
+
+  /* risk meter */
+  .risk-meter { display: flex; flex-direction: column; gap: 6px; }
+  .risk-label { font-size: 12px; color: var(--muted); }
+  .risk-segments { display: flex; gap: 3px; }
+  .seg { flex: 1; height: 5px; border-radius: 2px; background: var(--surface3); transition: background 0.4s; }
+
+  /* stats row */
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-box { background: var(--surface2); border-radius: var(--radius-sm); padding: 12px 14px; }
+  .stat-box .s-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .stat-box .s-val { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; color: var(--text); }
+
+  /* raw json */
+  .raw-toggle { width: 100%; background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 12px; font-family: 'DM Mono', monospace; padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer; text-align: left; transition: border-color 0.2s; display: flex; justify-content: space-between; align-items: center; }
+  .raw-toggle:hover { border-color: var(--border2); color: var(--text); }
+  .raw-json { display: none; background: var(--surface2); border-radius: var(--radius-sm); padding: 14px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); white-space: pre-wrap; word-break: break-all; margin-top: 8px; max-height: 200px; overflow-y: auto; line-height: 1.6; }
+
+  /* empty state */
+  .empty-state { padding: 40px 24px; text-align: center; color: var(--muted); }
+  .empty-state .big-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state p { font-size: 13px; line-height: 1.6; }
+
+  /* history */
+  .history-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .hist-item { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; cursor: pointer; transition: border-color 0.2s; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .hist-item:hover { border-color: var(--border2); }
+  .hist-verdict { font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 5px; }
+  .hist-verdict.churn { color: var(--red); }
+  .hist-verdict.no-churn { color: var(--green); }
+  .hist-meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+
+  /* error */
+  .error-box { background: rgba(242,95,92,0.08); border: 1px solid rgba(242,95,92,0.25); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: var(--red); margin-top: 12px; display: none; }
+
+  /* model badge */
+  .model-info { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .metric-pill { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent2); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+
+  select option { background: #18181f; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      ChurnPredict
+    </div>
+    <div class="api-status" onclick="checkHealth()" title="Clic para verificar conexión">
+      <div class="status-dot" id="dot"></div>
+      <span id="status-text">verificar API</span>
+    </div>
+  </header>
+
+  <div class="hero">
+    <h1>Predicción de <span>abandono</span><br/>de clientes</h1>
+    <p>Ingresa los datos del cliente y obtén la probabilidad de churn en tiempo real desde tu modelo ML.</p>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- left: form -->
+    <div>
+      <div class="card">
+        <div class="card-title">Endpoint API</div>
+        <div class="endpoint-bar">
+          <span class="method-badge">POST</span>
+          <input class="endpoint-input" id="endpoint" type="text" value="http://localhost:8000/predict" placeholder="http://localhost:8000/predict" />
+        </div>
+
+        <div class="card-title">Datos del cliente</div>
+        <div class="fields">
+
+          <div class="field">
+            <label>Edad</label>
+            <div class="slider-wrap">
+              <input type="range" min="18" max="90" value="35" id="edad" oninput="syncVal('edad','edad_val')" />
+              <span class="slider-val" id="edad_val">35</span>
+            </div>
+            <span class="hint">años</span>
+          </div>
+
+          <div class="field">
+            <label>Antigüedad</label>
+            <div class="slider-wrap">
+              <input type="range" min="0" max="120" value="24" id="antiguedad_meses" oninput="syncVal('antiguedad_meses','ant_val')" />
+              <span class="slider-val" id="ant_val">24</span>
+            </div>
+            <span class="hint">meses</span>
+          </div>
+
+          <div class="field full">
+            <label>Saldo promedio</label>
+            <div class="slider-wrap">
+              <input type="range" min="0" max="50000" step="500" value="5000" id="saldo_promedio" oninput="syncVal('saldo_promedio','saldo_val',true)" />
+              <span class="slider-val" id="saldo_val" style="min-width:64px">$5,000</span>
+            </div>
+            <span class="hint">USD</span>
+          </div>
+
+          <div class="field">
+            <label>Reclamos</label>
+            <div class="slider-wrap">
+              <input type="range" min="0" max="20" value="2" id="reclamos" oninput="syncVal('reclamos','rec_val')" />
+              <span class="slider-val" id="rec_val">2</span>
+            </div>
+            <span class="hint">últimos 12 meses</span>
+          </div>
+
+          <div class="field" style="justify-content:center; padding-top:8px">
+            <label>Usa App Móvil</label>
+            <div class="toggle-wrap" style="margin-top:8px">
+              <div class="toggle" id="usa_app_toggle" onclick="toggleApp()" role="switch" aria-checked="false"></div>
+              <span class="toggle-label" id="toggle_label">No</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="error-box" id="error-box"></div>
+
+        <button class="predict-btn" id="predict-btn" onclick="predict()">
+          <span id="btn-icon">→</span>
+          <span id="btn-text">Predecir Churn</span>
+        </button>
+
+        <div class="model-info">
+          <span>Modelo:</span>
+          <span class="metric-pill">Accuracy 100%</span>
+          <span class="metric-pill">F1 100%</span>
+          <span class="metric-pill">RandomForest / LogReg</span>
+        </div>
+      </div>
+
+      <!-- history -->
+      <div id="history-section" style="display:none; margin-top:20px;">
+        <div class="card">
+          <div class="card-title">Historial</div>
+          <div class="history-list" id="history-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- right: result -->
+    <div>
+      <div class="result-card" id="result-card">
+        <div class="empty-state" id="empty-state">
+          <div class="big-icon">◎</div>
+          <p>Completa el formulario y presiona<br/><strong>Predecir Churn</strong> para ver el resultado.</p>
+        </div>
+
+        <div id="result-content" style="display:none">
+          <div class="result-header">
+            <div class="label">Resultado de clasificación</div>
+            <div class="result-verdict" id="verdict-text">—</div>
+          </div>
+          <div class="result-body">
+
+            <div class="prob-section">
+              <div class="prob-label">
+                <span>Probabilidad de churn</span>
+                <span id="prob-pct">—</span>
+              </div>
+              <div class="prob-track">
+                <div class="prob-fill" id="prob-fill" style="width:0%"></div>
+              </div>
+            </div>
+
+            <div class="risk-meter">
+              <div class="risk-label">Nivel de riesgo</div>
+              <div class="risk-segments" id="risk-segs">
+                <div class="seg" id="s1"></div><div class="seg" id="s2"></div><div class="seg" id="s3"></div>
+                <div class="seg" id="s4"></div><div class="seg" id="s5"></div><div class="seg" id="s6"></div>
+                <div class="seg" id="s7"></div><div class="seg" id="s8"></div><div class="seg" id="s9"></div><div class="seg" id="s10"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px">
+                <span>Bajo</span><span>Medio</span><span>Alto</span>
+              </div>
+            </div>
+
+            <div class="stats-row">
+              <div class="stat-box">
+                <div class="s-label">Clasificación</div>
+                <div class="s-val" id="stat-class">—</div>
+              </div>
+              <div class="stat-box">
+                <div class="s-label">Confianza</div>
+                <div class="s-val" id="stat-conf">—</div>
+              </div>
+              <div class="stat-box">
+                <div class="s-label">Latencia</div>
+                <div class="s-val" id="stat-lat">—</div>
+              </div>
+              <div class="stat-box">
+                <div class="s-label">Predicciones</div>
+                <div class="s-val" id="stat-count">0</div>
+              </div>
+            </div>
+
+            <div>
+              <button class="raw-toggle" onclick="toggleRaw(this)">
+                <span>Raw JSON</span><span>▼</span>
+              </button>
+              <pre class="raw-json" id="raw-json"></pre>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let usaApp = 0;
+let predCount = 0;
+let historyItems = [];
+
+function syncVal(id, outId, isMoney=false) {
+  const v = parseInt(document.getElementById(id).value);
+  const el = document.getElementById(outId);
+  el.textContent = isMoney ? '$' + v.toLocaleString('es') : v;
+}
+
+function toggleApp() {
+  usaApp = usaApp === 0 ? 1 : 0;
+  const t = document.getElementById('usa_app_toggle');
+  t.classList.toggle('on', usaApp === 1);
+  t.setAttribute('aria-checked', usaApp === 1);
+  document.getElementById('toggle_label').textContent = usaApp === 1 ? 'Sí' : 'No';
+}
+
+function getPayload() {
+  return {
+    edad: parseInt(document.getElementById('edad').value),
+    antiguedad_meses: parseInt(document.getElementById('antiguedad_meses').value),
+    saldo_promedio: parseFloat(document.getElementById('saldo_promedio').value),
+    reclamos: parseInt(document.getElementById('reclamos').value),
+    usa_app: usaApp
+  };
+}
+
+async function checkHealth() {
+  const base = document.getElementById('endpoint').value.trim().replace('/predict', '');
+  const dot = document.getElementById('dot');
+  const txt = document.getElementById('status-text');
+  dot.className = 'status-dot checking';
+  txt.textContent = 'verificando...';
+  try {
+    const r = await fetch(base + '/health', { signal: AbortSignal.timeout(4000) });
+    if (r.ok) {
+      dot.className = 'status-dot ok';
+      txt.textContent = 'API activa';
+    } else {
+      dot.className = 'status-dot err';
+      txt.textContent = 'error ' + r.status;
+    }
+  } catch {
+    dot.className = 'status-dot err';
+    txt.textContent = 'sin conexión';
+  }
+}
+
+async function predict() {
+  const url = document.getElementById('endpoint').value.trim();
+  if (!url) { showError('Ingresa el endpoint de la API.'); return; }
+
+  hideError();
+  setBtnLoading(true);
+
+  const payload = getPayload();
+  const t0 = Date.now();
+
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000)
+    });
+    const latency = Date.now() - t0;
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'HTTP ' + r.status);
+    predCount++;
+    showResult(data, latency, payload);
+    addHistory(data, latency, payload);
+  } catch (e) {
+    showError(e.name === 'AbortError' ? 'Timeout: la API no respondió a tiempo.' : 'Error: ' + e.message);
+  } finally {
+    setBtnLoading(false);
+  }
+}
+
+function setBtnLoading(loading) {
+  const btn = document.getElementById('predict-btn');
+  btn.disabled = loading;
+  document.getElementById('btn-icon').innerHTML = loading ? '<div class="spinner"></div>' : '→';
+  document.getElementById('btn-text').textContent = loading ? 'Prediciendo...' : 'Predecir Churn';
+}
+
+function showResult(data, latency, payload) {
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('result-content').style.display = 'block';
+
+  const churn = data.churn_predicho;
+  const prob = data.probabilidad_churn;
+  const pct = prob !== null ? Math.round(prob * 100) : (churn === 1 ? 100 : 0);
+
+  // verdict
+  const verdictEl = document.getElementById('verdict-text');
+  if (churn === 1) {
+    verdictEl.innerHTML = '<div class="verdict-icon churn">⚠</div><span style="color:var(--red)">Abandono probable</span>';
+  } else {
+    verdictEl.innerHTML = '<div class="verdict-icon no-churn">✓</div><span style="color:var(--green)">Cliente fiel</span>';
+  }
+
+  // prob bar
+  const fill = document.getElementById('prob-fill');
+  fill.style.width = pct + '%';
+  fill.className = 'prob-fill' + (pct >= 70 ? ' high' : pct >= 40 ? ' mid' : '');
+  document.getElementById('prob-pct').textContent = pct + '%';
+
+  // risk segments
+  const segs = Math.round(pct / 10);
+  for (let i = 1; i <= 10; i++) {
+    const seg = document.getElementById('s' + i);
+    if (i <= segs) {
+      seg.style.background = pct >= 70 ? 'var(--red)' : pct >= 40 ? 'var(--yellow)' : 'var(--green)';
+    } else {
+      seg.style.background = 'var(--surface3)';
+    }
+  }
+
+  // stats
+  document.getElementById('stat-class').textContent = churn === 1 ? 'Churn' : 'No Churn';
+  document.getElementById('stat-conf').textContent = prob !== null ? pct + '%' : 'N/A';
+  document.getElementById('stat-lat').textContent = latency + 'ms';
+  document.getElementById('stat-count').textContent = predCount;
+
+  // raw
+  document.getElementById('raw-json').textContent = JSON.stringify(data, null, 2);
+}
+
+function addHistory(data, latency, payload) {
+  const churn = data.churn_predicho;
+  const prob = data.probabilidad_churn;
+  const pct = prob !== null ? Math.round(prob * 100) : (churn === 1 ? 100 : 0);
+  const ts = new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  historyItems.unshift({ churn, pct, latency, ts, data, payload });
+  if (historyItems.length > 8) historyItems.pop();
+
+  const section = document.getElementById('history-section');
+  section.style.display = 'block';
+  const list = document.getElementById('history-list');
+  list.innerHTML = historyItems.map((h, i) => `
+    <div class="hist-item" onclick="replayHistory(${i})">
+      <span class="hist-verdict ${h.churn === 1 ? 'churn' : 'no-churn'}">
+        ${h.churn === 1 ? '⚠ Churn' : '✓ Fiel'} · ${h.pct}%
+      </span>
+      <span class="hist-meta">${h.ts} · ${h.latency}ms</span>
+    </div>`).join('');
+}
+
+function replayHistory(i) {
+  const h = historyItems[i];
+  showResult(h.data, h.latency, h.payload);
+}
+
+function toggleRaw(btn) {
+  const pre = document.getElementById('raw-json');
+  const open = pre.style.display === 'block';
+  pre.style.display = open ? 'none' : 'block';
+  btn.querySelector('span:last-child').textContent = open ? '▼' : '▲';
+}
+
+function showError(msg) {
+  const box = document.getElementById('error-box');
+  box.textContent = msg;
+  box.style.display = 'block';
+}
+
+function hideError() {
+  document.getElementById('error-box').style.display = 'none';
+}
+
+// auto check on load
+window.addEventListener('load', () => {
+  setTimeout(checkHealth, 500);
+});
+</script>
+</body>
+</html>
