@@ -45,7 +45,9 @@ def frontend():
  
 @app.get("/")
 def inicio():
-    return {"mensaje": "API de predicción de churn activa"}
+    return {"mensaje": "Servicio ML-Ops activo",
+        "estado": "ok",
+        "autor": "David Salomon Aliaga Nina"}
  
 @app.get("/health")
 def health():
