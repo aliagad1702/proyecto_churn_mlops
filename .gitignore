@@ -1,23 +1,22 @@
-# Entornos virtuales
+# Entorno virtual local
 .venv/
-venv/
 
 # Caché de Python
 __pycache__/
 *.pyc
 *.pyo
 
-# Configuración local
-.env
-.vscode/
+# Caché de notebooks
+.ipynb_checkpoints/
 
-# Archivos generados por ejecución
-data/*.csv
-models/*.pkl
+# Git
+.git/
+.gitignore
 
-# Caché de pruebas
-.pytest_cache/
+# Archivos temporales
+*.tmp
+*.log
 
-# Archivos del sistema operativo
+# Sistema operativo
 .DS_Store
 Thumbs.db
